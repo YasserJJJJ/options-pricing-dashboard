@@ -1,0 +1,37 @@
+# Python virtual environments
+venv/
+.venv/
+env/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Environment variables
+.env
+.env.*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+__MACOSX/
+
+# Editors
+.vscode/
+.idea/
+
+# Build files
+build/
+dist/
+*.egg-info/
