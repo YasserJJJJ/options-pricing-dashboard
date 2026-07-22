@@ -4,7 +4,10 @@ import streamlit as st
 from black_scholes import (
     black_scholes_price,
     calculate_greeks,
+    implied_volatility,
+    monte_carlo_price,
     payoff_at_expiration,
+    theoretical_price_bounds,
 )
 
 
@@ -98,6 +101,46 @@ with st.sidebar:
         step=1.00
     )
 
+    st.subheader("Advanced Inputs")
+
+    observed_market_price = st.number_input(
+        "Observed Option Price",
+        min_value=0.00,
+        value=2.50,
+        step=0.10,
+        help=(
+            "The current option price used to calculate "
+            "implied volatility."
+        ),
+    )
+
+    simulations = st.select_slider(
+        "Monte Carlo Simulations",
+        options=[
+            1_000,
+            5_000,
+            10_000,
+            20_000,
+            50_000,
+        ],
+        value=20_000,
+        help=(
+            "More simulations generally improve precision "
+            "but take longer."
+        ),
+    )
+
+    random_seed = st.number_input(
+        "Simulation Seed",
+        min_value=0,
+        max_value=1_000_000,
+        value=42,
+        step=1,
+        help=(
+            "Using the same seed makes the simulation "
+            "reproducible."
+        ),
+    )
     st.divider()
 
     st.caption(
