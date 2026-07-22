@@ -9,9 +9,12 @@ from black_scholes import (
     calculate_d1,
     calculate_d2,
     calculate_greeks,
+    implied_volatility,
+    monte_carlo_price,
     normal_cdf,
     normal_pdf,
     payoff_at_expiration,
+    theoretical_price_bounds,
     validate_inputs,
 )
 
@@ -201,3 +204,250 @@ def test_payoff_option_type_is_case_insensitive() -> None:
 def test_payoff_rejects_invalid_option_type() -> None:
     with pytest.raises(ValueError, match="option_type must be 'call' or 'put'."):
         payoff_at_expiration(100.0, 100.0, 5.0, "invalid")
+
+@pytest.mark.parametrize("option_type", ["call", "put"])
+def test_implied_volatility_recovers_original_volatility(
+    option_type: str,
+) -> None:
+    market_price = black_scholes_price(
+        **STANDARD_INPUTS,
+        option_type=option_type,
+    )
+
+    result = implied_volatility(
+        market_price=market_price,
+        S=STANDARD_INPUTS["S"],
+        K=STANDARD_INPUTS["K"],
+        T=STANDARD_INPUTS["T"],
+        r=STANDARD_INPUTS["r"],
+        option_type=option_type,
+    )
+
+    assert result == pytest.approx(
+        STANDARD_INPUTS["sigma"],
+        abs=1e-6,
+    )
+
+
+@pytest.mark.parametrize("option_type", ["call", "put"])
+def test_theoretical_price_bounds_are_valid(
+    option_type: str,
+) -> None:
+    lower, upper = theoretical_price_bounds(
+        S=100.0,
+        K=100.0,
+        T=1.0,
+        r=0.05,
+        option_type=option_type,
+    )
+
+    assert lower >= 0
+    assert upper > lower
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid_value", "message"),
+    [
+        ("S", 0.0, "Stock price"),
+        ("K", 0.0, "Strike price"),
+        ("T", 0.0, "Time to expiration"),
+        ("option_type", "invalid", "option_type"),
+    ],
+)
+def test_theoretical_bounds_reject_invalid_inputs(
+    field: str,
+    invalid_value,
+    message: str,
+) -> None:
+    inputs = {
+        "S": 100.0,
+        "K": 100.0,
+        "T": 1.0,
+        "r": 0.05,
+        "option_type": "call",
+    }
+
+    inputs[field] = invalid_value
+
+    with pytest.raises(ValueError, match=message):
+        theoretical_price_bounds(**inputs)
+
+
+def test_implied_volatility_rejects_impossible_price() -> None:
+    with pytest.raises(
+        ValueError,
+        match="Market price must be between",
+    ):
+        implied_volatility(
+            market_price=200.0,
+            S=100.0,
+            K=100.0,
+            T=1.0,
+            r=0.05,
+            option_type="call",
+        )
+
+
+def test_implied_volatility_respects_iteration_limit() -> None:
+    result = implied_volatility(
+        market_price=10.0,
+        S=100.0,
+        K=100.0,
+        T=1.0,
+        r=0.05,
+        option_type="call",
+        max_iterations=1,
+    )
+
+    assert 0.0 < result < 5.0
+
+
+@pytest.mark.parametrize("option_type", ["call", "put"])
+def test_monte_carlo_is_close_to_black_scholes(
+    option_type: str,
+) -> None:
+    analytical_price = black_scholes_price(
+        **STANDARD_INPUTS,
+        option_type=option_type,
+    )
+
+    simulation = monte_carlo_price(
+        **STANDARD_INPUTS,
+        option_type=option_type,
+        simulations=50_000,
+        seed=7,
+    )
+
+    difference = abs(
+        simulation["price"] - analytical_price
+    )
+
+    assert (
+        difference
+        < 4 * simulation["standard_error"]
+    )
+
+    assert (
+        simulation["confidence_low"]
+        <= simulation["price"]
+        <= simulation["confidence_high"]
+    )
+
+
+def test_monte_carlo_is_reproducible() -> None:
+    first = monte_carlo_price(
+        **STANDARD_INPUTS,
+        option_type="call",
+        simulations=1_000,
+        seed=123,
+    )
+
+    second = monte_carlo_price(
+        **STANDARD_INPUTS,
+        option_type="call",
+        simulations=1_000,
+        seed=123,
+    )
+
+    assert first == second
+
+
+def test_monte_carlo_rejects_too_few_simulations() -> None:
+    with pytest.raises(ValueError, match="at least 2"):
+        monte_carlo_price(
+            **STANDARD_INPUTS,
+            option_type="call",
+            simulations=1,
+        )
+
+
+def test_monte_carlo_rejects_invalid_option_type() -> None:
+    with pytest.raises(ValueError, match="option_type"):
+        monte_carlo_price(
+            **STANDARD_INPUTS,
+            option_type="invalid",
+        )
+
+def test_implied_volatility_expands_search_range() -> None:
+    market_price = black_scholes_price(
+        **{**STANDARD_INPUTS, "sigma": 6.0},
+        option_type="call",
+    )
+
+    result = implied_volatility(
+        market_price=market_price,
+        S=STANDARD_INPUTS["S"],
+        K=STANDARD_INPUTS["K"],
+        T=STANDARD_INPUTS["T"],
+        r=STANDARD_INPUTS["r"],
+        option_type="call",
+    )
+
+    assert result == pytest.approx(6.0, abs=1e-6)
+
+
+def test_implied_volatility_returns_zero_at_lower_bound() -> None:
+    lower_bound, _ = theoretical_price_bounds(
+        S=100.0,
+        K=100.0,
+        T=1.0,
+        r=0.05,
+        option_type="call",
+    )
+
+    result = implied_volatility(
+        market_price=lower_bound,
+        S=100.0,
+        K=100.0,
+        T=1.0,
+        r=0.05,
+        option_type="call",
+    )
+
+    assert result == 0.0
+
+
+def test_implied_volatility_rejects_upper_bound() -> None:
+    _, upper_bound = theoretical_price_bounds(
+        S=100.0,
+        K=100.0,
+        T=1.0,
+        r=0.05,
+        option_type="call",
+    )
+
+    with pytest.raises(ValueError, match="finite implied volatility"):
+        implied_volatility(
+            market_price=upper_bound,
+            S=100.0,
+            K=100.0,
+            T=1.0,
+            r=0.05,
+            option_type="call",
+        )
+
+
+@pytest.mark.parametrize(
+    ("argument", "value", "message"),
+    [
+        ("tolerance", 0.0, "Tolerance"),
+        ("max_iterations", 0, "Maximum iterations"),
+    ],
+)
+def test_implied_volatility_rejects_invalid_solver_settings(
+    argument: str,
+    value,
+    message: str,
+) -> None:
+    arguments = {
+        "market_price": 10.0,
+        "S": 100.0,
+        "K": 100.0,
+        "T": 1.0,
+        "r": 0.05,
+        "option_type": "call",
+    }
+    arguments[argument] = value
+
+    with pytest.raises(ValueError, match=message):
+        implied_volatility(**arguments)
