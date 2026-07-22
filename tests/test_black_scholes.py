@@ -367,3 +367,87 @@ def test_monte_carlo_rejects_invalid_option_type() -> None:
             **STANDARD_INPUTS,
             option_type="invalid",
         )
+
+def test_implied_volatility_expands_search_range() -> None:
+    market_price = black_scholes_price(
+        **{**STANDARD_INPUTS, "sigma": 6.0},
+        option_type="call",
+    )
+
+    result = implied_volatility(
+        market_price=market_price,
+        S=STANDARD_INPUTS["S"],
+        K=STANDARD_INPUTS["K"],
+        T=STANDARD_INPUTS["T"],
+        r=STANDARD_INPUTS["r"],
+        option_type="call",
+    )
+
+    assert result == pytest.approx(6.0, abs=1e-6)
+
+
+def test_implied_volatility_returns_zero_at_lower_bound() -> None:
+    lower_bound, _ = theoretical_price_bounds(
+        S=100.0,
+        K=100.0,
+        T=1.0,
+        r=0.05,
+        option_type="call",
+    )
+
+    result = implied_volatility(
+        market_price=lower_bound,
+        S=100.0,
+        K=100.0,
+        T=1.0,
+        r=0.05,
+        option_type="call",
+    )
+
+    assert result == 0.0
+
+
+def test_implied_volatility_rejects_upper_bound() -> None:
+    _, upper_bound = theoretical_price_bounds(
+        S=100.0,
+        K=100.0,
+        T=1.0,
+        r=0.05,
+        option_type="call",
+    )
+
+    with pytest.raises(ValueError, match="finite implied volatility"):
+        implied_volatility(
+            market_price=upper_bound,
+            S=100.0,
+            K=100.0,
+            T=1.0,
+            r=0.05,
+            option_type="call",
+        )
+
+
+@pytest.mark.parametrize(
+    ("argument", "value", "message"),
+    [
+        ("tolerance", 0.0, "Tolerance"),
+        ("max_iterations", 0, "Maximum iterations"),
+    ],
+)
+def test_implied_volatility_rejects_invalid_solver_settings(
+    argument: str,
+    value,
+    message: str,
+) -> None:
+    arguments = {
+        "market_price": 10.0,
+        "S": 100.0,
+        "K": 100.0,
+        "T": 1.0,
+        "r": 0.05,
+        "option_type": "call",
+    }
+    arguments[argument] = value
+
+    with pytest.raises(ValueError, match=message):
+        implied_volatility(**arguments)

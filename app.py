@@ -17,6 +17,28 @@ st.set_page_config(
     layout="wide"
 )
 
+@st.cache_data(show_spinner=False)
+def cached_monte_carlo_price(
+    S: float,
+    K: float,
+    T: float,
+    r: float,
+    sigma: float,
+    option_type: str,
+    simulations: int,
+    seed: int,
+) -> dict:
+    """Cache deterministic simulations between Streamlit reruns."""
+    return monte_carlo_price(
+        S=S,
+        K=K,
+        T=T,
+        r=r,
+        sigma=sigma,
+        option_type=option_type,
+        simulations=simulations,
+        seed=seed,
+    )
 
 st.markdown(
     """
@@ -247,11 +269,82 @@ with st.expander("What do these Greeks mean?"):
 st.divider()
 
 
+st.subheader("Advanced Pricing")
+
+implied_volatility_col, monte_carlo_col = st.columns(2)
+
+with implied_volatility_col:
+    st.markdown("#### Implied Volatility")
+
+    lower_price_bound, upper_price_bound = theoretical_price_bounds(
+        S=S,
+        K=K,
+        T=T,
+        r=r,
+        option_type=option_type,
+    )
+
+    try:
+        estimated_implied_volatility = implied_volatility(
+            market_price=observed_market_price,
+            S=S,
+            K=K,
+            T=T,
+            r=r,
+            option_type=option_type,
+        )
+
+        st.metric(
+            "Implied Volatility",
+            f"{estimated_implied_volatility * 100:.2f}%",
+        )
+    except ValueError as error:
+        st.warning(str(error))
+
+    st.caption(
+        "Valid observed-price range: "
+        f"${lower_price_bound:.4f} to "
+        f"${upper_price_bound:.4f}."
+    )
+
+with monte_carlo_col:
+    st.markdown("#### Monte Carlo Estimate")
+
+    simulation_result = cached_monte_carlo_price(
+        S=S,
+        K=K,
+        T=T,
+        r=r,
+        sigma=sigma,
+        option_type=option_type,
+        simulations=int(simulations),
+        seed=int(random_seed),
+    )
+
+    st.metric(
+        "Simulated Option Price",
+        f"${simulation_result['price']:.2f}",
+        delta=(
+            f"${simulation_result['price'] - price:+.2f} "
+            "vs Black-Scholes"
+        ),
+    )
+
+    st.caption(
+        "95% confidence interval: "
+        f"${simulation_result['confidence_low']:.4f} to "
+        f"${simulation_result['confidence_high']:.4f}. "
+        f"Standard error: ${simulation_result['standard_error']:.4f}."
+    )
+
+st.divider()
+
+
 st.subheader("Charts")
 
 
 def create_stock_price_range(current_price: float) -> list:
-    lower_bound = max(current_price * 0.5, 1)
+    lower_bound = max(current_price * 0.5, 0.01)
     upper_bound = current_price * 1.5
     step = (upper_bound - lower_bound) / 50
 

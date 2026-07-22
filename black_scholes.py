@@ -281,6 +281,16 @@ def implied_volatility(
 ) -> float:
     """Estimate implied volatility using bisection."""
 
+    if tolerance <= 0:
+        raise ValueError(
+            "Tolerance must be greater than 0."
+        )
+
+    if max_iterations < 1:
+        raise ValueError(
+            "Maximum iterations must be at least 1."
+        )
+
     lower_bound, upper_bound = theoretical_price_bounds(
         S=S,
         K=K,
@@ -296,8 +306,71 @@ def implied_volatility(
             f"{upper_bound:.4f}."
         )
 
+    if math.isclose(
+        market_price,
+        lower_bound,
+        rel_tol=0.0,
+        abs_tol=tolerance,
+    ):
+        return 0.0
+
+    if math.isclose(
+        market_price,
+        upper_bound,
+        rel_tol=0.0,
+        abs_tol=tolerance,
+    ):
+        raise ValueError(
+            "A price at the upper theoretical bound "
+            "does not have a finite implied volatility."
+        )
+
     low_volatility = 0.000001
-    high_volatility = 5.0
+    high_volatility = 0.5
+
+    low_price = black_scholes_price(
+        S=S,
+        K=K,
+        T=T,
+        r=r,
+        sigma=low_volatility,
+        option_type=option_type,
+    )
+
+    if market_price <= low_price:
+        return 0.0
+
+    high_price = black_scholes_price(
+        S=S,
+        K=K,
+        T=T,
+        r=r,
+        sigma=high_volatility,
+        option_type=option_type,
+    )
+
+    maximum_search_volatility = 128.0
+
+    while (
+        high_price < market_price
+        and high_volatility < maximum_search_volatility
+    ):
+        high_volatility *= 2
+
+        high_price = black_scholes_price(
+            S=S,
+            K=K,
+            T=T,
+            r=r,
+            sigma=high_volatility,
+            option_type=option_type,
+        )
+
+    if high_price < market_price:
+        raise ValueError(
+            "Unable to find a finite implied volatility "
+            "for the supplied market price."
+        )
 
     for _ in range(max_iterations):
         midpoint = (
