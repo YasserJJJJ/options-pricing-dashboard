@@ -1,5 +1,7 @@
 # Options Pricing Dashboard
 
+**[Open the live dashboard](https://options-pricing-dashboard.vercel.app)**
+
 An interactive dashboard for European option pricing and risk analysis. A responsive HTML/CSS/JavaScript frontend calls the original Python pricing engine through a Vercel Function. The frontend and API deploy together from this repository.
 
 [![Tests](https://github.com/YasserJJJJ/options-pricing-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/YasserJJJJ/options-pricing-dashboard/actions/workflows/tests.yml)
@@ -95,3 +97,4 @@ The suite covers model values, Greeks, put–call parity, implied-volatility edg
 European exercise, no dividends, constant volatility and risk-free rate, lognormal stock prices, and no transaction costs. Time uses a 365-day year. Prices are per share in USD; multiply by the applicable contract size separately. Payoff charts show long-option profit/loss at expiry after subtracting the theoretical premium. Monte Carlo intervals measure simulation uncertainty, not market-price prediction uncertainty.
 
 Educational and portfolio project only; not financial advice.
+
