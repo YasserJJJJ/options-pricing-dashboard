@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explore European option pricing, Greeks, implied volatility, and Monte Carlo simulations in an interactive dashboard.">
+  <meta name="theme-color" content="#0c1017">
+  <title>Options Pricing Dashboard</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/dashboard.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Options Pricing Dashboard home"><span class="brand-icon">∿</span><span>OPTIONS<span class="brand-light"> / ANALYTICS</span></span></a>
+    <a class="source-link" href="https://github.com/YasserJJJJ/options-pricing-dashboard" target="_blank" rel="noopener noreferrer">View source <span aria-hidden="true">↗</span></a>
+  </header>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="section-eyebrow">PRICING WORKSPACE</div>
+      <h2>Market parameters</h2>
+      <p class="muted">Set a scenario. Explore the outcome.</p>
+      <form id="pricing-form">
+        <fieldset class="option-switch"><legend class="sr-only">Option type</legend>
+          <label><input type="radio" name="option_type" value="call" checked><span>Call option</span></label>
+          <label><input type="radio" name="option_type" value="put"><span>Put option</span></label>
+        </fieldset>
+        <div class="input-grid">
+          <label>Stock price ($)<input name="stock_price" type="number" min="0.01" max="1000000" step="0.01" value="100" required></label>
+          <label>Strike price ($)<input name="strike_price" type="number" min="0.01" max="1000000" step="0.01" value="100" required></label>
+        </div>
+        <label>Days to expiration<input name="days" type="number" min="1" max="3650" step="1" value="30" required></label>
+        <div class="input-grid">
+          <label>Risk-free rate (%)<input name="rate_percent" type="number" min="-20" max="100" step="0.01" value="5" required></label>
+          <label>Volatility (%)<input name="volatility_percent" type="number" min="0.01" max="300" step="0.01" value="20" required></label>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="section-eyebrow">ADVANCED PRICING</div>
+        <label>Observed option price ($)<input name="market_price" type="number" min="0" max="1000000" step="0.01" value="2.50" required><span class="field-help">Used to estimate implied volatility.</span></label>
+        <label>Monte Carlo simulations<select name="simulations"><option value="1000">1,000 paths</option><option value="5000">5,000 paths</option><option value="10000">10,000 paths</option><option value="20000" selected>20,000 paths</option><option value="50000">50,000 paths</option></select></label>
+        <label>Random seed<input name="seed" type="number" min="0" max="1000000" step="1" value="42" required><span class="field-help">Same seed, reproducible results.</span></label>
+        <button class="calculate-button" type="submit" id="calculate-button">Calculate scenario <span aria-hidden="true">→</span></button>
+        <button class="reset-button" type="reset">Reset parameters</button>
+      </form>
+      <p class="sidebar-note">European options · No dividends<br>Prices are per share, in USD.</p>
+    </aside>
+    <main>
+      <div class="page-heading"><div><div class="section-eyebrow accent">QUANTITATIVE FINANCE</div><h1>Options Pricing Dashboard</h1><p class="muted">From market assumptions to pricing and risk.</p></div><span class="model-badge">BLACK–SCHOLES</span></div>
+      <div class="scenario-line"><span id="scenario-summary">Loading initial scenario…</span><span id="status" role="status" aria-live="polite">Calculating…</span></div>
+      <div id="request-error" class="error-banner" role="alert" hidden></div>
+      <section id="results" aria-label="Pricing results" aria-busy="true">
+        <div class="summary-grid">
+          <article class="card price-card"><div class="card-label">THEORETICAL OPTION PRICE <span class="tag" id="option-tag">CALL</span></div><div class="hero-value" id="price">—</div><p class="muted">Analytical Black–Scholes valuation</p><div class="price-footer"><span>Break-even at expiry</span><strong id="break-even">—</strong></div></article>
+          <article class="card"><div class="card-label">MONTE CARLO ESTIMATE</div><div class="metric-value" id="mc-price">—</div><div class="metric-detail" id="mc-difference">—</div><div class="interval-label">95% confidence interval</div><div class="interval-value" id="mc-interval">—</div><p class="muted small" id="mc-error">—</p></article>
+          <article class="card"><div class="card-label">IMPLIED VOLATILITY</div><div class="metric-value" id="iv">—</div><p class="muted small">Volatility implied by the observed price</p><p class="iv-warning" id="iv-warning" role="status" hidden></p><div class="interval-label">Observed price bounds</div><div class="interval-value" id="iv-bounds">—</div></article>
+        </div>
+        <div class="section-heading"><h2>Risk sensitivities</h2><span class="muted small">The Greeks</span></div>
+        <div class="greeks-grid">
+          <article class="card greek-card"><span>Delta</span><strong id="greek-Delta">—</strong><small>Price change per $1 stock move</small></article>
+          <article class="card greek-card"><span>Gamma</span><strong id="greek-Gamma">—</strong><small>Delta change per $1 stock move</small></article>
+          <article class="card greek-card"><span>Theta</span><strong id="greek-Theta">—</strong><small>Price change per day</small></article>
+          <article class="card greek-card"><span>Vega</span><strong id="greek-Vega">—</strong><small>Price change per 1% volatility</small></article>
+          <article class="card greek-card"><span>Rho</span><strong id="greek-Rho">—</strong><small>Price change per 1% interest rate</small></article>
+        </div>
+        <section class="card chart-card" aria-label="Sensitivity analysis">
+          <div class="chart-heading"><div><h2>Scenario analysis</h2><p class="muted small" id="chart-description">Option value and profit/loss across stock prices.</p></div><button id="download-button" class="secondary-button" type="button" disabled>Export CSV ↓</button></div>
+          <div class="chart-controls"><div class="tabs" role="tablist" aria-label="Chart type"><button role="tab" id="tab-payoff" aria-controls="chart-panel" aria-selected="true" tabindex="0" data-chart="payoff">Payoff &amp; price</button><button role="tab" id="tab-greeks" aria-controls="chart-panel" aria-selected="false" tabindex="-1" data-chart="greeks">Greeks sensitivity</button><button role="tab" id="tab-volatility" aria-controls="chart-panel" aria-selected="false" tabindex="-1" data-chart="volatility">Volatility</button></div><label id="greek-picker" class="greek-picker" hidden><span class="sr-only">Select Greek</span><select id="selected-greek"><option>Delta</option><option>Gamma</option><option>Theta</option><option>Vega</option><option>Rho</option></select></label></div>
+          <div id="chart-panel" role="tabpanel" aria-labelledby="tab-payoff"><div id="chart-legend" class="chart-legend"></div><div class="chart-wrapper"><svg id="chart" viewBox="0 0 900 340" role="img" aria-label="Sensitivity chart"></svg><div id="chart-tooltip" class="chart-tooltip" hidden></div></div><details class="data-details"><summary>View chart data</summary><div class="table-scroll"><table id="chart-table"></table></div></details></div>
+        </section>
+        <details class="card notes"><summary>Model assumptions &amp; interpretation</summary><p>European exercise, no dividends, constant volatility and risk-free interest rate, lognormal stock prices, and no transaction costs. Time to expiry uses a 365-day year. Payoff charts show a long option’s profit/loss at expiration, after subtracting the theoretical premium.</p><p>Monte Carlo intervals describe simulation uncertainty under these assumptions. They do not predict market prices.</p></details>
+      </section>
+      <footer>Built by Yasser Jabari <span>Educational project · Not financial advice</span></footer>
+    </main>
+  </div>
+</body>
+</html>

@@ -13,9 +13,6 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Streamlit secrets
-.streamlit/secrets.toml
-
 # Environment variables
 .env
 .env.*
@@ -35,3 +32,6 @@ __MACOSX/
 build/
 dist/
 *.egg-info/
+
+# Vercel local project configuration
+.vercel/
