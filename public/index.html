@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Explore European option pricing, Greeks, implied volatility, and Monte Carlo simulations in an interactive dashboard.">
-  <meta name="theme-color" content="#0c1017">
+  <meta name="theme-color" content="#f5f5f7">
   <title>Options Pricing Dashboard</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
@@ -12,14 +12,17 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/" aria-label="Options Pricing Dashboard home"><span class="brand-icon">∿</span><span>OPTIONS<span class="brand-light"> / ANALYTICS</span></span></a>
-    <a class="source-link" href="https://github.com/YasserJJJJ/options-pricing-dashboard" target="_blank" rel="noopener noreferrer">View source <span aria-hidden="true">↗</span></a>
+    <a class="brand" href="/" aria-label="Options Pricing Dashboard home"><span class="brand-icon" aria-hidden="true">∿</span><span>Options<span class="brand-dot">.</span></span></a>
+    <div class="header-right"><span class="header-context">A little clarity. A better perspective.</span><a class="source-link" href="https://github.com/YasserJJJJ/options-pricing-dashboard" target="_blank" rel="noopener noreferrer">Source code <span aria-hidden="true">↗</span></a></div>
   </header>
   <div class="layout">
     <aside class="sidebar">
-      <div class="section-eyebrow">PRICING WORKSPACE</div>
-      <h2>Market parameters</h2>
-      <p class="muted">Set a scenario. Explore the outcome.</p>
+      <details id="scenario-settings" open>
+      <summary class="scenario-toggle"><span>Scenario settings</span><span class="toggle-action">Edit <span aria-hidden="true">+</span></span></summary>
+      <div class="sidebar-content">
+      <div class="section-eyebrow">THE STARTING POINT</div>
+      <h2>Your scenario.</h2>
+      <p class="muted">Small changes. New perspectives.</p>
       <form id="pricing-form">
         <fieldset class="option-switch"><legend class="sr-only">Option type</legend>
           <label><input type="radio" name="option_type" value="call" checked><span>Call option</span></label>
@@ -35,7 +38,7 @@
           <label>Volatility (%)<input name="volatility_percent" type="number" min="0.01" max="300" step="0.01" value="20" required></label>
         </div>
         <div class="sidebar-divider"></div>
-        <div class="section-eyebrow">ADVANCED PRICING</div>
+        <div class="section-eyebrow">A LITTLE DEEPER</div>
         <label>Observed option price ($)<input name="market_price" type="number" min="0" max="1000000" step="0.01" value="2.50" required><span class="field-help">Used to estimate implied volatility.</span></label>
         <label>Monte Carlo simulations<select name="simulations"><option value="1000">1,000 paths</option><option value="5000">5,000 paths</option><option value="10000">10,000 paths</option><option value="20000" selected>20,000 paths</option><option value="50000">50,000 paths</option></select></label>
         <label>Random seed<input name="seed" type="number" min="0" max="1000000" step="1" value="42" required><span class="field-help">Same seed, reproducible results.</span></label>
@@ -43,16 +46,18 @@
         <button class="reset-button" type="reset">Reset parameters</button>
       </form>
       <p class="sidebar-note">European options · No dividends<br>Prices are per share, in USD.</p>
+      </div>
+      </details>
     </aside>
     <main>
-      <div class="page-heading"><div><div class="section-eyebrow accent">QUANTITATIVE FINANCE</div><h1>Options Pricing Dashboard</h1><p class="muted">From market assumptions to pricing and risk.</p></div><span class="model-badge">BLACK–SCHOLES</span></div>
+      <div class="page-heading"><div><div class="section-eyebrow accent">OPTIONS PRICING DASHBOARD</div><h1>Options, made clear.</h1><p class="muted">Explore pricing. Understand risk.</p></div><span class="model-badge">European options</span></div>
       <div class="scenario-line"><span id="scenario-summary">Loading initial scenario…</span><span id="status" role="status" aria-live="polite">Calculating…</span></div>
       <div id="request-error" class="error-banner" role="alert" hidden></div>
       <section id="results" aria-label="Pricing results" aria-busy="true">
         <div class="summary-grid">
-          <article class="card price-card"><div class="card-label">THEORETICAL OPTION PRICE <span class="tag" id="option-tag">CALL</span></div><div class="hero-value" id="price">—</div><p class="muted">Analytical Black–Scholes valuation</p><div class="price-footer"><span>Break-even at expiry</span><strong id="break-even">—</strong></div></article>
-          <article class="card"><div class="card-label">MONTE CARLO ESTIMATE</div><div class="metric-value" id="mc-price">—</div><div class="metric-detail" id="mc-difference">—</div><div class="interval-label">95% confidence interval</div><div class="interval-value" id="mc-interval">—</div><p class="muted small" id="mc-error">—</p></article>
-          <article class="card"><div class="card-label">IMPLIED VOLATILITY</div><div class="metric-value" id="iv">—</div><p class="muted small">Volatility implied by the observed price</p><p class="iv-warning" id="iv-warning" role="status" hidden></p><div class="interval-label">Observed price bounds</div><div class="interval-value" id="iv-bounds">—</div></article>
+          <article class="card price-card"><div class="card-label">Theoretical price <span class="tag" id="option-tag">CALL</span></div><div class="hero-value" id="price">—</div><p class="muted">Black–Scholes, at a glance.</p><div class="price-footer"><span>Break-even at expiry</span><strong id="break-even">—</strong></div></article>
+          <article class="card"><div class="card-label">Monte Carlo estimate</div><div class="metric-value" id="mc-price">—</div><div class="metric-detail" id="mc-difference">—</div><div class="interval-label">95% confidence interval</div><div class="interval-value" id="mc-interval">—</div><p class="muted small" id="mc-error">—</p></article>
+          <article class="card"><div class="card-label">Implied volatility</div><div class="metric-value" id="iv">—</div><p class="muted small">The volatility behind the market price.</p><p class="iv-warning" id="iv-warning" role="status" hidden></p><div class="interval-label">Observed price bounds</div><div class="interval-value" id="iv-bounds">—</div></article>
         </div>
         <div class="section-heading"><h2>Risk sensitivities</h2><span class="muted small">The Greeks</span></div>
         <div class="greeks-grid">

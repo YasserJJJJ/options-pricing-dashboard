@@ -91,18 +91,18 @@ async function calculate() {
 function chartData() {
   if (activeChart === "volatility") return {
     rows: result.volatility_sensitivity, x: "volatility", xLabel: "Volatility (%)",
-    series: [{key: "option_price", label: "Option price", color: "#68e2b1"}],
+    series: [{key: "option_price", label: "Option price", color: "#2442ff"}],
     description: "Theoretical option price as volatility changes.",
   };
   if (activeChart === "greeks") {
     const greek = $("selected-greek").value;
     return {rows: result.stock_sensitivity, x: "stock_price", xLabel: "Stock price ($)",
-      series: [{key: greek, label: greek, color: "#68e2b1"}],
+      series: [{key: greek, label: greek, color: "#2442ff"}],
       description: `${greek} sensitivity across stock prices.`};
   }
   return {rows: result.stock_sensitivity, x: "stock_price", xLabel: "Stock price ($)",
-    series: [{key: "option_price", label: "Theoretical option price", color: "#68e2b1"},
-      {key: "profit_loss", label: "Profit/loss at expiration", color: "#7daaff"}],
+    series: [{key: "option_price", label: "Theoretical option price", color: "#2442ff"},
+      {key: "profit_loss", label: "Profit/loss at expiration", color: "#d9157f"}],
     description: "Option value and long-option profit/loss across stock prices."};
 }
 
@@ -123,7 +123,7 @@ function renderChart() {
   const legend = $("chart-legend");
   legend.replaceChildren(...series.map((s, index) => {
     const span = document.createElement("span");
-    span.className = "legend-item" + (index ? " blue" : "");
+    span.className = "legend-item" + (index ? " secondary" : "");
     span.textContent = s.label;
     return span;
   }));
@@ -144,7 +144,7 @@ function renderChart() {
     svg.append(svgElement("line", {x1:left, x2:right, y1:py(value), y2:py(value), class:"chart-grid"}));
     svg.append(svgElement("text", {x:left-12, y:py(value)+4, "text-anchor":"end", class:"chart-axis"}, tick(value)));
   }
-  if (minY < 0 && maxY > 0) svg.append(svgElement("line", {x1:left, x2:right, y1:py(0), y2:py(0), stroke:"#596879", "stroke-dasharray":"4"}));
+  if (minY < 0 && maxY > 0) svg.append(svgElement("line", {x1:left, x2:right, y1:py(0), y2:py(0), class:"chart-zero", "stroke-dasharray":"4"}));
   for (let i = 0; i <= 5; i++) {
     const value = minX + (maxX - minX) * i / 5;
     svg.append(svgElement("text", {x:px(value), y:bottom+22, "text-anchor":"middle", class:"chart-axis"}, tick(value)));
@@ -229,5 +229,13 @@ $("download-button").addEventListener("click", () => {
   document.body.append(link); link.click(); link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
+
+const compactLayout = window.matchMedia("(max-width: 800px)");
+const scenarioSettings = $("scenario-settings");
+function syncScenarioSettings() {
+  scenarioSettings.open = !compactLayout.matches;
+}
+compactLayout.addEventListener("change", syncScenarioSettings);
+syncScenarioSettings();
 
 calculate();
