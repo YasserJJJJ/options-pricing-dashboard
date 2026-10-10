@@ -91,18 +91,18 @@ async function calculate() {
 function chartData() {
   if (activeChart === "volatility") return {
     rows: result.volatility_sensitivity, x: "volatility", xLabel: "Volatility (%)",
-    series: [{key: "option_price", label: "Option price", color: "#2442ff"}],
+    series: [{key: "option_price", label: "Option price", color: "#0a84ff"}],
     description: "Theoretical option price as volatility changes.",
   };
   if (activeChart === "greeks") {
     const greek = $("selected-greek").value;
     return {rows: result.stock_sensitivity, x: "stock_price", xLabel: "Stock price ($)",
-      series: [{key: greek, label: greek, color: "#2442ff"}],
+      series: [{key: greek, label: greek, color: "#0a84ff"}],
       description: `${greek} sensitivity across stock prices.`};
   }
   return {rows: result.stock_sensitivity, x: "stock_price", xLabel: "Stock price ($)",
-    series: [{key: "option_price", label: "Theoretical option price", color: "#2442ff"},
-      {key: "profit_loss", label: "Profit/loss at expiration", color: "#d9157f"}],
+    series: [{key: "option_price", label: "Theoretical option price", color: "#0a84ff"},
+      {key: "profit_loss", label: "Profit/loss at expiration", color: "#ff2d78"}],
     description: "Option value and long-option profit/loss across stock prices."};
 }
 
