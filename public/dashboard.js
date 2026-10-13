@@ -31,6 +31,8 @@ function renderResult(data) {
   $("mc-difference").textContent = `${difference >= 0 ? "+" : ""}${money(difference, 4)} vs Black–Scholes`;
   $("mc-interval").textContent = `${money(mc.confidence_low, 4)} – ${money(mc.confidence_high, 4)}`;
   $("mc-error").textContent = `Standard error ${money(mc.standard_error, 4)} · ${mc.simulations.toLocaleString("en-US")} paths`;
+  $("mc-warning").textContent = data.monte_carlo_warning || "";
+  $("mc-warning").hidden = !data.monte_carlo_warning;
   $("iv").textContent = data.implied_volatility === null ? "Unavailable" : `${numeric(data.implied_volatility * 100, 2)}%`;
   $("iv-warning").textContent = data.iv_error || "";
   $("iv-warning").hidden = !data.iv_error;
@@ -218,6 +220,7 @@ $("download-button").addEventListener("click", () => {
   const metadata = {...result.inputs, black_scholes_price:result.price, ...result.greeks,
     monte_carlo_price:result.monte_carlo.price, standard_error:result.monte_carlo.standard_error,
     confidence_low:result.monte_carlo.confidence_low, confidence_high:result.monte_carlo.confidence_high,
+    monte_carlo_warning:result.monte_carlo_warning,
     implied_volatility:result.implied_volatility, iv_error:result.iv_error, break_even:result.break_even};
   const metaKeys = Object.keys(metadata);
   const chartKeys = [chart.x, ...chart.series.map(s => s.key)];

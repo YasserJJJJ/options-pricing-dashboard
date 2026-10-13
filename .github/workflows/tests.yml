@@ -28,4 +28,4 @@ jobs:
 
       - name: Run automated tests
         run: |
-          pytest --cov=black_scholes --cov-branch --cov-report=term-missing --cov-fail-under=95
+          pytest --cov=black_scholes --cov=dashboard --cov=api --cov-branch --cov-report=term-missing --cov-fail-under=95

@@ -188,7 +188,7 @@ footer { display: flex; justify-content: space-between; gap: 16px; color: var(--
   .summary-grid > .card:not(.price-card) .card-label { grid-column: 1; }
   .summary-grid > .card:not(.price-card) .metric-value { grid-column: 2; grid-row: 1 / 3; margin: 0; font-size: 31px; }
   .metric-detail, .summary-grid > .card > .muted { grid-column: 1; }
-  .interval-label, .interval-value, #mc-error, #iv-warning { grid-column: 1 / -1; }
+  .interval-label, .interval-value, #mc-error, #mc-warning, #iv-warning { grid-column: 1 / -1; }
   #iv { max-width: 190px; }
   .interval-label { margin-top: 18px; }
   .greeks-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }

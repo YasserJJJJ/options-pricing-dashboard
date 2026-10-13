@@ -92,3 +92,20 @@ def test_wrong_content_type(api_server):
 
 def test_health_endpoint(api_server):
     assert request(api_server, None, method="GET") == (200, {"status": "ok", "service": "options-pricing"})
+
+
+def test_monte_carlo_warning_only_for_unreliable_simulations():
+    assert calculate_dashboard({})["monte_carlo_warning"] is None
+    extreme = calculate_dashboard({"days": 3650, "volatility_percent": 300, "simulations": 50000})
+    assert abs(extreme["monte_carlo"]["price"] - extreme["price"]) > 3 * extreme["monte_carlo"]["standard_error"]
+    assert "does not match the analytical price" in extreme["monte_carlo_warning"]
+
+
+@pytest.mark.parametrize("volatility, expected_max", [(20, 100), (100, 125), (150, 190), (300, 300)])
+def test_volatility_chart_covers_input_volatility(volatility, expected_max):
+    rows = calculate_dashboard({"volatility_percent": volatility})["volatility_sensitivity"]
+    levels = [row["volatility"] for row in rows]
+    assert len(levels) == 20
+    assert levels[-1] == expected_max
+    assert levels[0] <= volatility <= levels[-1]
+    assert levels == sorted(levels)

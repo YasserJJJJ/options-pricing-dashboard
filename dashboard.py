@@ -55,14 +55,26 @@ def calculate_dashboard(data):
             "profit_loss": payoff_at_expiration(stock, params["K"], price, option_type),
             **calculate_greeks(**scenario),
         })
+    # Chart 20 volatility levels: 5–100% by default, widened to include high input volatilities.
+    max_volatility = min(300, max(100, 5 * math.ceil(inputs["volatility_percent"] * 1.25 / 5)))
     volatility_rows = [
         {"volatility": vol, "option_price": black_scholes_price(**{**params, "sigma": vol / 100})}
-        for vol in range(5, 101, 5)
+        for vol in (max_volatility * i / 20 for i in range(1, 21))
     ]
+    mc = monte_carlo_price(**params, simulations=inputs["simulations"], seed=inputs["seed"])
+    # Flag simulations that miss the analytical price by more than 3 standard errors, 1% of
+    # the price and one cent: the sample cannot represent a very skewed terminal price distribution.
+    mc_gap = abs(mc["price"] - price)
+    mc_warning = None
+    if mc_gap > max(3 * mc["standard_error"], 0.01 * price, 0.01):
+        mc_warning = (
+            "The simulation does not match the analytical price for this scenario. Very high "
+            "volatility or long expiries make the sample unreliable; the Black–Scholes price is exact."
+        )
     return {
         "inputs": inputs, "price": price, "greeks": calculate_greeks(**params),
         "implied_volatility": iv, "iv_error": iv_error, "price_bounds": bounds,
-        "monte_carlo": monte_carlo_price(**params, simulations=inputs["simulations"], seed=inputs["seed"]),
+        "monte_carlo": mc, "monte_carlo_warning": mc_warning,
         "stock_sensitivity": stock_rows, "volatility_sensitivity": volatility_rows,
         "break_even": params["K"] + price if option_type == "call" else params["K"] - price,
     }
