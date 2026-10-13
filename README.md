@@ -6,13 +6,15 @@ An interactive dashboard for European option pricing and risk analysis. A respon
 
 [![Tests](https://github.com/YasserJJJJ/options-pricing-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/YasserJJJJ/options-pricing-dashboard/actions/workflows/tests.yml)
 
+![Options Pricing Dashboard showing the theoretical price, Monte Carlo estimate, implied volatility, Greeks, and payoff chart](assets/dashboard.png)
+
 ## Features
 
 - Black–Scholes prices for European calls and puts
 - Delta, Gamma, Theta, Vega, and Rho
 - Implied volatility with adaptive bisection and theoretical-price validation
-- Reproducible Monte Carlo pricing, standard error, and 95% confidence intervals
-- Payoff, Greek, and volatility sensitivity charts with hover values and data tables
+- Reproducible Monte Carlo pricing, standard error, and 95% confidence intervals, with a warning when the simulation cannot represent the scenario reliably
+- Payoff, Greek, and volatility sensitivity charts (the volatility range widens to cover high inputs) with hover values and data tables
 - CSV export including the calculated scenario, risk metrics, simulation results, and selected chart
 - Responsive mobile layout, keyboard-accessible chart tabs, and explicit loading/error states
 
@@ -30,7 +32,7 @@ An interactive dashboard for European option pricing and risk analysis. A respon
 | `vercel.json` | Static output, Python function settings, and response headers |
 | `tests/` | Numerical and HTTP/API regression tests |
 
-The production runtime uses the Python standard library only. No API keys, database, JavaScript build step, or separately hosted backend are needed. Streamlit and its dependencies have been removed.
+The production runtime uses the Python standard library only. No API keys, database, JavaScript build step, or separately hosted backend are needed.
 
 ## Run locally
 
@@ -79,7 +81,7 @@ npx vercel --prod
 }
 ```
 
-Missing fields use the example defaults. Rates and volatility are percentages. The response includes the validated inputs, analytical price, five Greeks, Monte Carlo statistics, implied volatility (or a warning), break-even price, and sensitivity arrays. Invalid model inputs return HTTP 400; an invalid observed price returns a successful pricing response with `implied_volatility: null` and `iv_error`, so the remaining dashboard stays usable.
+Missing fields use the example defaults. Rates and volatility are percentages. The response includes the validated inputs, analytical price, five Greeks, Monte Carlo statistics with `monte_carlo_warning` (a message when the simulation misses the analytical price by more than three standard errors, 1% of the price, and one cent; otherwise `null`), implied volatility (or a warning), break-even price, and sensitivity arrays. Invalid model inputs return HTTP 400; an invalid observed price returns a successful pricing response with `implied_volatility: null` and `iv_error`, so the remaining dashboard stays usable.
 
 Requests are limited to 8 KB and at most 50,000 simulations. Prices must be positive and at most $1,000,000; expiry is 1–3,650 whole days; volatility is 0.01–300%; interest rate is −20–100%; the seed is a whole number between 0 and 1,000,000.
 
@@ -87,7 +89,7 @@ Requests are limited to 8 KB and at most 50,000 simulations. Prices must be posi
 
 ```bash
 python3 -m pip install -r requirements-dev.txt
-python3 -m pytest --cov=black_scholes --cov-branch --cov-report=term-missing --cov-fail-under=95
+python3 -m pytest --cov=black_scholes --cov=dashboard --cov=api --cov-branch --cov-report=term-missing --cov-fail-under=95
 ```
 
 The suite covers model values, Greeks, put–call parity, implied-volatility edge cases, seeded simulations, input validation, JSON/HTTP errors, and consistency between API/chart outputs and the original engine. GitHub Actions runs the suite on pushes and pull requests.
@@ -97,4 +99,8 @@ The suite covers model values, Greeks, put–call parity, implied-volatility edg
 European exercise, no dividends, constant volatility and risk-free rate, lognormal stock prices, and no transaction costs. Time uses a 365-day year. Prices are per share in USD; multiply by the applicable contract size separately. Payoff charts show long-option profit/loss at expiry after subtracting the theoretical premium. Monte Carlo intervals measure simulation uncertainty, not market-price prediction uncertainty.
 
 Educational and portfolio project only; not financial advice.
+
+## License
+
+[MIT](LICENSE)
 
