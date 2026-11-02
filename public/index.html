@@ -40,7 +40,16 @@
         </div>
         <h3 class="form-group-title">Implied volatility and simulation</h3>
         <label>Observed option price ($)<input name="market_price" type="number" min="0" max="1000000" step="0.01" value="2.50" required><span class="field-help">The market price to back out implied volatility from.</span></label>
-        <label>Monte Carlo paths<select name="simulations"><option value="1000">1,000</option><option value="5000">5,000</option><option value="10000">10,000</option><option value="20000" selected>20,000</option><option value="50000">50,000</option></select></label>
+        <fieldset class="paths-field"><legend>Monte Carlo paths</legend>
+          <div class="option-switch">
+            <label><input type="radio" name="simulations" value="1000"><span>1k<span class="sr-only"> paths</span></span></label>
+            <label><input type="radio" name="simulations" value="5000"><span>5k<span class="sr-only"> paths</span></span></label>
+            <label><input type="radio" name="simulations" value="10000"><span>10k<span class="sr-only"> paths</span></span></label>
+            <label><input type="radio" name="simulations" value="20000" checked><span>20k<span class="sr-only"> paths</span></span></label>
+            <label><input type="radio" name="simulations" value="50000"><span>50k<span class="sr-only"> paths</span></span></label>
+          </div>
+          <span class="field-help">More paths give a tighter interval but take longer.</span>
+        </fieldset>
         <label>Random seed<input name="seed" type="number" min="0" max="1000000" step="1" value="42" required><span class="field-help">The same seed always gives the same simulation.</span></label>
         <button class="calculate-button" type="submit" id="calculate-button">Calculate</button>
         <button class="reset-button" type="reset">Reset to defaults</button>
