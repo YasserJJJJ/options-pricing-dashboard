@@ -44,7 +44,7 @@ cd options-pricing-dashboard
 python3 app.py
 ```
 
-Open <http://localhost:3000>. Results update when you click **Calculate scenario**. Changing inputs marks previous results as stale until you recalculate. Exports always use the calculated scenario.
+Open <http://localhost:3000>. Results update when you click **Calculate**. Changing inputs marks previous results as stale until you recalculate. Exports always use the calculated scenario.
 
 ## Deploy on Vercel
 

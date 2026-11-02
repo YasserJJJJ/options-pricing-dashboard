@@ -6,6 +6,9 @@ const money = (value, digits = 2) => new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits,
 }).format(value);
 const numeric = (value, digits = 4) => Number(value).toFixed(digits);
+// Whole-dollar inputs read better without cents ("$100 strike" rather than "$100.00 strike").
+const inputMoney = (value) => money(value, Number.isInteger(value) ? 0 : 2);
+const plural = (count, word) => `${count.toLocaleString("en-US")} ${word}${count === 1 ? "" : "s"}`;
 let result = null;
 let activeChart = "payoff";
 let controller;
@@ -24,21 +27,27 @@ function setStale(stale) {
 function renderResult(data) {
   const {inputs, greeks, monte_carlo: mc} = data;
   $("price").textContent = money(data.price);
-  $("option-tag").textContent = inputs.option_type.toUpperCase();
+  const type = inputs.option_type === "call" ? "Call" : "Put";
+  $("scenario-title").textContent = `${type} option, ${inputMoney(inputs.strike_price)} strike`;
+  $("scenario-summary").textContent = `Stock at ${inputMoney(inputs.stock_price)}, ${plural(inputs.days, "day")} to expiry, ${numeric(inputs.volatility_percent, 2).replace(/\.?0+$/, "")}% volatility, ${numeric(inputs.rate_percent, 2).replace(/\.?0+$/, "")}% risk-free rate.`;
   $("break-even").textContent = money(data.break_even);
   $("mc-price").textContent = money(mc.price);
   const difference = mc.price - data.price;
-  $("mc-difference").textContent = `${difference >= 0 ? "+" : ""}${money(difference, 4)} vs Black–Scholes`;
-  $("mc-interval").textContent = `${money(mc.confidence_low, 4)} – ${money(mc.confidence_high, 4)}`;
-  $("mc-error").textContent = `Standard error ${money(mc.standard_error, 4)} · ${mc.simulations.toLocaleString("en-US")} paths`;
+  $("mc-difference").textContent = Math.abs(difference) < 0.00005
+    ? "Same as Black–Scholes"
+    : `${money(Math.abs(difference), 4)} ${difference > 0 ? "above" : "below"} Black–Scholes`;
+  $("mc-interval").textContent = `${money(mc.confidence_low, 4)} to ${money(mc.confidence_high, 4)}`;
+  $("mc-error").textContent = `Standard error ${money(mc.standard_error, 4)} from ${plural(mc.simulations, "path")}.`;
   $("mc-warning").textContent = data.monte_carlo_warning || "";
   $("mc-warning").hidden = !data.monte_carlo_warning;
   $("iv").textContent = data.implied_volatility === null ? "Unavailable" : `${numeric(data.implied_volatility * 100, 2)}%`;
+  $("iv-note").textContent = data.implied_volatility === null
+    ? `No volatility gives a price of ${money(inputs.market_price)}.`
+    : `The volatility that prices this option at ${money(inputs.market_price)}.`;
   $("iv-warning").textContent = data.iv_error || "";
   $("iv-warning").hidden = !data.iv_error;
-  $("iv-bounds").textContent = `${money(data.price_bounds[0], 4)} – ${money(data.price_bounds[1], 4)}`;
+  $("iv-bounds").textContent = `${money(data.price_bounds[0])} to ${money(data.price_bounds[1])}`;
   for (const [key, value] of Object.entries(greeks)) $("greek-" + key).textContent = numeric(value);
-  $("scenario-summary").textContent = `${inputs.option_type.toUpperCase()} · Stock ${money(inputs.stock_price)} · Strike ${money(inputs.strike_price)} · ${inputs.days} days · Vol ${numeric(inputs.volatility_percent, 2)}%`;
   renderChart();
 }
 
@@ -68,13 +77,13 @@ async function calculate() {
     renderResult(data);
     const dirty = JSON.stringify(readInputs()) !== JSON.stringify(inputSnapshot);
     setStale(dirty);
-    $("status").textContent = dirty ? "Inputs changed · Calculate to update" : "Scenario calculated";
+    $("status").textContent = dirty ? "Inputs changed. Calculate to update." : "Up to date";
   } catch (error) {
     if (id !== requestId) return;
     $("request-error").textContent = error.name === "AbortError"
-      ? "The calculation timed out. Please try again."
+      ? "The calculation took more than 25 seconds. Try fewer Monte Carlo paths, then calculate again."
       : error instanceof SyntaxError || error instanceof TypeError
-        ? "Could not reach the pricing service. Please try again."
+        ? "The pricing service could not be reached. Check your connection, then calculate again."
         : error.message;
     $("request-error").hidden = false;
     $("status").textContent = "Calculation failed";
@@ -84,28 +93,33 @@ async function calculate() {
     clearTimeout(timeout);
     if (id === requestId) {
       $("calculate-button").disabled = false;
-      $("calculate-button").textContent = "Calculate scenario →";
+      $("calculate-button").textContent = "Calculate";
       $("results").setAttribute("aria-busy", "false");
     }
   }
 }
 
 function chartData() {
-  if (activeChart === "volatility") return {
-    rows: result.volatility_sensitivity, x: "volatility", xLabel: "Volatility (%)",
-    series: [{key: "option_price", label: "Option price", color: "#0a84ff"}],
-    description: "Theoretical option price as volatility changes.",
-  };
+  const {inputs} = result;
+  const stockMarkers = [{label: "Strike", value: inputs.strike_price}, {label: "Today", value: inputs.stock_price}];
+  if (activeChart === "volatility") {
+    const markers = [{label: "Input", value: inputs.volatility_percent, unit: "%"}];
+    if (result.implied_volatility !== null) markers.push({label: "Implied", value: result.implied_volatility * 100, unit: "%"});
+    return {rows: result.volatility_sensitivity, x: "volatility", xLabel: "Volatility (%)",
+      series: [{key: "option_price", label: "Option price", color: "#0a84ff"}],
+      description: "Theoretical option price as volatility changes.", markers};
+  }
   if (activeChart === "greeks") {
     const greek = $("selected-greek").value;
     return {rows: result.stock_sensitivity, x: "stock_price", xLabel: "Stock price ($)",
       series: [{key: greek, label: greek, color: "#0a84ff"}],
-      description: `${greek} sensitivity across stock prices.`};
+      description: `${greek} across stock prices, with other inputs unchanged.`, markers: stockMarkers, dotAt: inputs.stock_price};
   }
   return {rows: result.stock_sensitivity, x: "stock_price", xLabel: "Stock price ($)",
-    series: [{key: "option_price", label: "Theoretical option price", color: "#0a84ff"},
-      {key: "profit_loss", label: "Profit/loss at expiration", color: "#ff2d78"}],
-    description: "Option value and long-option profit/loss across stock prices."};
+    series: [{key: "option_price", label: "Option value today", color: "#0a84ff"},
+      {key: "profit_loss", label: "Profit or loss at expiry", color: "#ff2d78"}],
+    description: "Option value today and profit or loss at expiry, across stock prices.",
+    markers: [...stockMarkers, {label: "Break-even", value: result.break_even}], dotAt: inputs.stock_price};
 }
 
 function svgElement(tag, attributes, content) {
@@ -115,9 +129,26 @@ function svgElement(tag, attributes, content) {
   return node;
 }
 
+// Markers at the same price share one label; nearby labels alternate sides and step down a row.
+function layoutMarkers(markers, px, minX, maxX) {
+  const placed = [];
+  for (const marker of markers.filter(m => m.value >= minX && m.value <= maxX).map(m => ({...m, x: px(m.value)})).sort((a, b) => a.x - b.x)) {
+    const last = placed[placed.length - 1];
+    if (last && Math.abs(last.x - marker.x) < 1) last.label += ` and ${marker.label.toLowerCase()}`;
+    else placed.push(marker);
+  }
+  let run = 0;
+  placed.forEach((marker, index) => {
+    run = index > 0 && marker.x - placed[index - 1].x < 130 ? run + 1 : 0;
+    marker.anchor = run % 2 === 0 ? "end" : "start";
+    marker.row = Math.floor(run / 2) % 2;
+  });
+  return placed;
+}
+
 function renderChart() {
   if (!result) return;
-  const {rows, x, xLabel, series, description} = chartData();
+  const {rows, x, xLabel, series, description, markers, dotAt} = chartData();
   $("chart-description").textContent = description;
   $("greek-picker").hidden = activeChart !== "greeks";
   $("chart-panel").setAttribute("aria-labelledby", "tab-" + activeChart);
@@ -131,8 +162,8 @@ function renderChart() {
   }));
   const svg = $("chart");
   svg.replaceChildren(svgElement("title", {}, description));
-  svg.setAttribute("aria-label", description + " Exact values are available in View chart data.");
-  const left = 66, right = 876, top = 16, bottom = 290;
+  svg.setAttribute("aria-label", description + " Exact values are in the data table below the chart.");
+  const left = 66, right = 876, top = 44, bottom = 290;
   const minX = rows[0][x], maxX = rows[rows.length - 1][x];
   const allY = rows.flatMap(row => series.map(s => row[s.key]));
   let minY = Math.min(...allY), maxY = Math.max(...allY);
@@ -152,9 +183,19 @@ function renderChart() {
     svg.append(svgElement("text", {x:px(value), y:bottom+22, "text-anchor":"middle", class:"chart-axis"}, tick(value)));
   }
   svg.append(svgElement("text", {x:(left+right)/2, y:335, "text-anchor":"middle", class:"chart-axis"}, xLabel));
+  for (const marker of layoutMarkers(markers, px, minX, maxX)) {
+    const labelY = 14 + marker.row * 16;
+    const value = marker.unit === "%" ? `${numeric(marker.value, 2)}%` : inputMoney(Math.round(marker.value * 100) / 100);
+    svg.append(svgElement("line", {x1:marker.x, x2:marker.x, y1:labelY + 4, y2:bottom, class:"chart-marker"}));
+    svg.append(svgElement("text", {x:marker.x + (marker.anchor === "end" ? -6 : 6), y:labelY, "text-anchor":marker.anchor, class:"chart-marker-label"}, `${marker.label} ${value}`));
+  }
   for (const s of series) svg.append(svgElement("polyline", {
     points:rows.map(row => `${px(row[x])},${py(row[s.key])}`).join(" "), class:"chart-line", stroke:s.color,
   }));
+  if (dotAt !== undefined) {
+    const nearest = rows.reduce((best, row) => Math.abs(row[x] - dotAt) < Math.abs(best[x] - dotAt) ? row : best);
+    svg.append(svgElement("circle", {cx:px(nearest[x]), cy:py(nearest[series[0].key]), r:5.5, fill:series[0].color, class:"chart-dot"}));
+  }
   const hoverLine = svgElement("line", {x1:0, x2:0, y1:top, y2:bottom, class:"chart-hover", visibility:"hidden"});
   svg.append(hoverLine);
   svg.onpointermove = event => {
@@ -195,11 +236,11 @@ function activateTab(tab, focus = false) {
 form.addEventListener("submit", event => { event.preventDefault(); calculate(); });
 form.addEventListener("input", () => {
   setStale(true);
-  $("status").textContent = "Inputs changed · Calculate to update";
+  $("status").textContent = "Inputs changed. Calculate to update.";
 });
 form.addEventListener("reset", () => {
   setStale(true);
-  $("status").textContent = "Resetting scenario…";
+  $("status").textContent = "Resetting…";
   setTimeout(calculate, 0);
 });
 const tabs = [...document.querySelectorAll("[data-chart]")];
